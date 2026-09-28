@@ -72,13 +72,13 @@ jobs:
         run: |
           set -euo pipefail
           notes="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")"
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            # Release already exists (e.g. a retry): refresh assets and
-            # notes instead of failing. Deleting a tag on GitHub turns its
-            # release into a draft, so re-publish explicitly.
-            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
-            gh release edit "$GITHUB_REF_NAME" --notes "$notes" --draft=false
-          else
-            gh release create "$GITHUB_REF_NAME" dist/* \
-              --title "$GITHUB_REF_NAME" --notes "$notes"
-          fi
+          # Re-pushing a tag demotes its existing release to a draft;
+          # drop any stale draft for this tag so the create below publishes
+          # a fresh, complete release.
+          gh api "repos/{owner}/{repo}/releases" --paginate \
+            --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\" and .draft) | .id" \
+            | while read -r id; do
+                gh api -X DELETE "repos/{owner}/{repo}/releases/$id"
+              done
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" --notes "$notes"
