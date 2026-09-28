@@ -28,7 +28,12 @@ dismiss them. Nothing executes without you.
 
 ## Install
 
-From Go:
+Download a prebuilt binary from the
+[Releases page](https://github.com/justinkadima/kash/releases)
+(linux / macOS / Windows, amd64 + arm64, with checksums): unpack the
+archive for your platform and put `kash` somewhere on your `PATH`.
+
+Or install from Go:
 
 ```sh
 go install github.com/justinkadima/kash@latest
@@ -36,7 +41,7 @@ go install github.com/justinkadima/kash@latest
 
 (Requires Go 1.26+; the binary lands in `$(go env GOPATH)/bin`.)
 
-From source:
+Or build from source:
 
 ```sh
 git clone https://github.com/justinkadima/kash
