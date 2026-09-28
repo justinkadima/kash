@@ -120,6 +120,10 @@ func (a *App) inSelection(vl, x int) bool {
 	if !a.sel.have {
 		return false
 	}
+	if a.sel.v0 == a.sel.v1 && a.sel.x0 == a.sel.x1 {
+		// Zero-width selections are never highlighted.
+		return false
+	}
 	lo, hi := a.sel.v0, a.sel.v1
 	xlo, xhi := a.sel.x0, a.sel.x1
 	if lo > hi {

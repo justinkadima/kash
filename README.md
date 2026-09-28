@@ -146,6 +146,14 @@ delivered**, which tells you immediately what is reaching the app.
 - one lock serializes emulator reads/writes between the pty pump and the
   render loop; the AI request runs on its own goroutine and posts events
   back to the UI loop
+- ultraviolet is vendored and patched: upstream `TerminalScreen.Flush`
+  requests a cursor move with `rend.MoveTo` but never drains the renderer,
+  so the move bytes are emitted one frame late — the visible cursor sat
+  one column off after edits and lagged on focus switches. The patch adds
+  `_ = s.rend.Flush()` after the move; `TestCursorMoveEmittedSameFrame`
+  fails if a re-vendor loses it. Re-vendoring? Re-apply the patch in
+  `vendor/github.com/charmbracelet/ultraviolet/terminal_screen.go`
+  (`Flush`).
 
 ## Security
 

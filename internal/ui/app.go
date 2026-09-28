@@ -456,7 +456,11 @@ func (a *App) onClick(e uv.MouseClickEvent) {
 				a.sel.x1 = relX
 				a.sel.dragging = true
 			} else {
-				a.sel = selState{dragging: true, have: true, v0: vl, v1: vl, x0: relX, x1: relX}
+				// A plain click starts a drag anchor but selects nothing until
+				// the mouse actually moves; a zero-width selection would render
+				// as a lone reversed cell — indistinguishable from a second
+				// cursor.
+				a.sel = selState{dragging: true, v0: vl, v1: vl, x0: relX, x1: relX}
 			}
 		case uv.MouseRight:
 			a.attachSelection()
@@ -477,6 +481,9 @@ func (a *App) onMotion(e uv.MouseMotionEvent) {
 		if a.sel.dragging {
 			a.sel.v1 = a.vlineAt(a.rectTerm, m.Y)
 			a.sel.x1 = clamp(m.X-a.rectTerm.Min.X, 0, max(0, a.rectTerm.Dx()-1))
+			if a.sel.v1 != a.sel.v0 || a.sel.x1 != a.sel.x0 {
+				a.sel.have = true
+			}
 		}
 	}
 }
@@ -492,6 +499,11 @@ func (a *App) onRelease(e uv.MouseReleaseEvent) {
 			return
 		}
 		a.sel.dragging = false
+		if a.sel.v0 == a.sel.v1 && a.sel.x0 == a.sel.x1 {
+			// Click without drag: clear the anchor instead of leaving a
+			// zero-width selection behind.
+			a.sel.have = false
+		}
 	}
 }
 
