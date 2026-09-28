@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justin/kash/internal/ai"
-	"github.com/justin/kash/internal/config"
-	"github.com/justin/kash/internal/shell"
+	"github.com/justinkadima/kash/internal/ai"
+	"github.com/justinkadima/kash/internal/config"
+	"github.com/justinkadima/kash/internal/shell"
 
 	uv "github.com/charmbracelet/ultraviolet"
 )

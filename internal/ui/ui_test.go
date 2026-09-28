@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/justin/kash/internal/config"
+	"github.com/justinkadima/kash/internal/config"
 
 	uv "github.com/charmbracelet/ultraviolet"
 )

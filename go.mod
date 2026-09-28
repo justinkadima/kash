@@ -1,4 +1,4 @@
-module github.com/justin/kash
+module github.com/justinkadima/kash
 
 go 1.26.2
 

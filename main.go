@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/justin/kash/internal/config"
-	"github.com/justin/kash/internal/shell"
-	"github.com/justin/kash/internal/ui"
+	"github.com/justinkadima/kash/internal/config"
+	"github.com/justinkadima/kash/internal/shell"
+	"github.com/justinkadima/kash/internal/ui"
 )
 
 func main() {
