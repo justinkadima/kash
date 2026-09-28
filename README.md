@@ -26,14 +26,31 @@ dismiss them. Nothing executes without you.
 └─────────────────────────────┴──────────────────┘
 ```
 
-## Build
+## Install
+
+From Go:
 
 ```sh
+go install github.com/justinkadima/kash@latest
+```
+
+(Requires Go 1.26+; the binary lands in `$(go env GOPATH)/bin`.)
+
+From source:
+
+```sh
+git clone https://github.com/justinkadima/kash
+cd kash
 go build -o kash .
 ```
 
 Pure Go (no CGO); cross-compiles. macOS and Linux are exercised; Windows
 should work via ConPTY but is untested.
+
+> **Note for maintainers:** `vendor/` pins ultraviolet with a small cursor
+> fix that upstream does not have yet. A plain `go mod vendor` will silently
+> drop it — see `internal/ui/cursor_flush_test.go` before re-vendoring
+> (`TestCursorMoveEmittedSameFrame` fails if the patch is lost).
 
 ## Run
 
@@ -134,30 +151,6 @@ Ctrl bindings above, or enable meta mode for the terminal profile:
 
 Open help (`ctrl+g` from chat) — it shows the **last key your terminal
 delivered**, which tells you immediately what is reaching the app.
-
-## How it works
-
-- `creack/pty` runs your `$SHELL` in a pty
-- `charmbracelet/x/vt` is the terminal emulator: it parses the child's
-  output into a cell grid (with scrollback), renders into
-  `charmbracelet/ultraviolet`'s screen, and encodes your keystrokes/mouse
-  back into the child — full-screen apps (vim, htop) work
-- chat streams over SSE from `{base_url}/v1/chat/completions`
-- each request carries: a system prompt, the last `context_lines` of
-  scrollback, any attached selection, and the conversation
-- fenced ```bash blocks in responses become chips; running one types the
-  command into the pty — exactly as if you pressed enter yourself
-- one lock serializes emulator reads/writes between the pty pump and the
-  render loop; the AI request runs on its own goroutine and posts events
-  back to the UI loop
-- ultraviolet is vendored and patched: upstream `TerminalScreen.Flush`
-  requests a cursor move with `rend.MoveTo` but never drains the renderer,
-  so the move bytes are emitted one frame late — the visible cursor sat
-  one column off after edits and lagged on focus switches. The patch adds
-  `_ = s.rend.Flush()` after the move; `TestCursorMoveEmittedSameFrame`
-  fails if a re-vendor loses it. Re-vendoring? Re-apply the patch in
-  `vendor/github.com/charmbracelet/ultraviolet/terminal_screen.go`
-  (`Flush`).
 
 ## Security
 
