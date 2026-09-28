@@ -1,4 +1,4 @@
-// Package config manages the persistent configuration for con.
+// Package config manages the persistent configuration for kash.
 package config
 
 import (
@@ -48,11 +48,14 @@ func Default() *Config {
 }
 
 // Path resolves the config file path. An explicit override (flag or
-// CON_CONFIG env) wins; otherwise the OS user config dir is used, which
+// KASH_CONFIG env) wins; otherwise the OS user config dir is used, which
 // keeps the binary + its config fully relocatable via env var.
+//
+// If no kash config exists but a config from the previous "con" name does,
+// it is copied over once and the new path is returned.
 func Path(override string) (string, error) {
 	if override == "" {
-		override = os.Getenv("CON_CONFIG")
+		override = os.Getenv("KASH_CONFIG")
 	}
 	if override != "" {
 		return filepath.Clean(override), nil
@@ -61,7 +64,21 @@ func Path(override string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "con", "config.json"), nil
+	path := filepath.Join(dir, "kash", "config.json")
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	}
+	// Migrate a config saved under the old "con" name, so existing users
+	// keep their settings across the rename.
+	legacy := filepath.Join(dir, "con", "config.json")
+	if data, err := os.ReadFile(legacy); err == nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err == nil {
+			if err := os.WriteFile(path, data, 0o644); err == nil {
+				fmt.Fprintf(os.Stderr, "kash: migrated settings from %s\n", legacy)
+			}
+		}
+	}
+	return path, nil
 }
 
 // Load reads the config at path, falling back to defaults for missing

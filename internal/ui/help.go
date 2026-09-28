@@ -60,7 +60,7 @@ func (a *App) drawHelp(scr uv.Screen, area uv.Rectangle) {
 		putStr(scr, inner, 1, i, l.keys, stYellow)
 		putStr(scr, inner, 21, i, truncate(scr, l.desc, inner.Dx()-22), uv.Style{})
 	}
-	// Key tester line: shows what the terminal last delivered to con.
+	// Key tester line: shows what the terminal last delivered to kash.
 	last := a.lastKey
 	if last == "" {
 		last = "…press any key"

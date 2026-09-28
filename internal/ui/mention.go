@@ -63,7 +63,7 @@ func mentionTokens(text string) []string {
 }
 
 // baseDir returns the directory relative @paths resolve against: the
-// shell's cwd when the shell reports it (OSC 7), else con's cwd.
+// shell's cwd when the shell reports it (OSC 7), else kash's cwd.
 func (a *App) baseDir() string {
 	if a.shell != nil {
 		if cwd := a.shell.Snapshot().Cwd; cwd != "" {

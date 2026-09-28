@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/justin/conterm/internal/config"
+	"github.com/justin/kash/internal/config"
 
 	uv "github.com/charmbracelet/ultraviolet"
 )

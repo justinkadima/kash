@@ -1,4 +1,4 @@
-// Package ui implements the con terminal user interface on top of
+// Package ui implements the kash terminal user interface on top of
 // ultraviolet's screen and event model.
 package ui
 

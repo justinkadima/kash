@@ -1,4 +1,4 @@
-# con
+# kash
 
 A portable terminal with an AI side panel. One Go binary, no runtime, no
 installer — your shell in the left pane, a chat backed by any
@@ -29,7 +29,7 @@ dismiss them. Nothing executes without you.
 ## Build
 
 ```sh
-go build -o con .
+go build -o kash .
 ```
 
 Pure Go (no CGO); cross-compiles. macOS and Linux are exercised; Windows
@@ -38,7 +38,7 @@ should work via ConPTY but is untested.
 ## Run
 
 ```sh
-./con
+./kash
 ```
 
 Ollama at `http://127.0.0.1:11434` is picked up automatically (first model
@@ -47,13 +47,17 @@ file.
 
 ### Config
 
-`$CON_CONFIG` → else `~/.config/con/config.json`
-(`~/Library/Application Support/con/config.json` on macOS). For a truly
+`$KASH_CONFIG` → else `~/.config/kash/config.json`
+(`~/Library/Application Support/kash/config.json` on macOS). For a truly
 portable setup, keep the binary next to a config and run:
 
 ```sh
-CON_CONFIG=./config.json ./con
+KASH_CONFIG=./config.json ./kash
 ```
+
+Upgrading from the earlier `con` name? The first launch copies an existing
+`~/.config/con/config.json` to the new location automatically (`CON_CONFIG`
+is gone; use `KASH_CONFIG`).
 
 ```json
 {
@@ -110,7 +114,7 @@ Type `@` in the chat input to reference content in that message:
 
 A popup lists candidates as you type: `↑↓` navigate · `tab` completes ·
 `esc` closes. Relative paths resolve against the shell's cwd when the
-shell reports it (OSC 7), else con's cwd. References are inserted beneath
+shell reports it (OSC 7), else kash's cwd. References are inserted beneath
 your message for that turn only (visible to the model as `--- @… ---`
 blocks), so they don't bloat later turns. Emails (`foo@bar.com`) are
 ignored; a token must stand alone after whitespace.

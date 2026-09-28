@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justin/conterm/internal/ai"
-	"github.com/justin/conterm/internal/config"
-	"github.com/justin/conterm/internal/shell"
+	"github.com/justin/kash/internal/ai"
+	"github.com/justin/kash/internal/config"
+	"github.com/justin/kash/internal/shell"
 
 	uv "github.com/charmbracelet/ultraviolet"
 )
@@ -753,7 +753,7 @@ func (a *App) cancelStream() {
 
 func (a *App) buildMessages(sel, refs string) []ai.Message {
 	var b strings.Builder
-	b.WriteString("You are the AI assistant embedded in \"con\", a terminal emulator with a chat side panel.\n")
+	b.WriteString("You are the AI assistant embedded in \"kash\", a terminal emulator with a chat side panel.\n")
 	b.WriteString("The user runs a real shell in the terminal pane; the recent terminal output is included below.\n\n")
 	b.WriteString("Rules:\n")
 	b.WriteString("- Be concise. Answer directly.\n")

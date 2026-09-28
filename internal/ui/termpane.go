@@ -3,7 +3,7 @@ package ui
 import (
 	"strings"
 
-	"github.com/justin/conterm/internal/shell"
+	"github.com/justin/kash/internal/shell"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	vt "github.com/charmbracelet/x/vt"

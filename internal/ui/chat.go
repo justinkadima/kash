@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/justin/conterm/internal/ai"
+	"github.com/justin/kash/internal/ai"
 
 	uv "github.com/charmbracelet/ultraviolet"
 )

@@ -1,4 +1,4 @@
-module github.com/justin/conterm
+module github.com/justin/kash
 
 go 1.26.2
 

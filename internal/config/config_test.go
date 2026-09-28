@@ -61,14 +61,66 @@ func TestSaveRoundTrip(t *testing.T) {
 }
 
 func TestPathOverride(t *testing.T) {
-	t.Setenv("CON_CONFIG", "")
+	t.Setenv("KASH_CONFIG", "")
 	p, err := Path("/custom/cfg.json")
 	if err != nil || p != "/custom/cfg.json" {
 		t.Errorf("Path(override) = %q, %v", p, err)
 	}
-	t.Setenv("CON_CONFIG", "/env/cfg.json")
+	t.Setenv("KASH_CONFIG", "/env/cfg.json")
 	p, err = Path("")
 	if err != nil || p != "/env/cfg.json" {
 		t.Errorf("Path(env) = %q, %v", p, err)
+	}
+}
+
+// Path must copy a legacy "con" config to the new location once, and must
+// never overwrite an existing kash config with the legacy file.
+func TestPathMigratesLegacyConConfig(t *testing.T) {
+	t.Setenv("KASH_CONFIG", "")
+	t.Setenv("HOME", t.TempDir())
+	ud, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	legacy := filepath.Join(ud, "con", "config.json")
+	if err := os.MkdirAll(filepath.Dir(legacy), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacy, []byte(`{"model": "legacy-model"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// First resolution migrates.
+	p, err := Path("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(ud, "kash", "config.json")
+	if p != want {
+		t.Fatalf("Path = %q, want %q", p, want)
+	}
+	cfg, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Model != "legacy-model" {
+		t.Fatalf("migrated config lost model: %+v", cfg)
+	}
+
+	// The migrated file must not clobber a kash config that appears later.
+	if err := os.WriteFile(want, []byte(`{"model": "new-model"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Path("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Model != "new-model" {
+		t.Fatalf("existing kash config was overwritten: %+v", cfg)
 	}
 }
