@@ -22,6 +22,12 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # checkout fetches the tag ref shallow, dereferencing annotated tags
+      # to plain commits; fetch the real tag objects so the release notes
+      # can use the tag annotation.
+      - name: Fetch full tag
+        run: git fetch --tags --force origin
+
       - name: Vet and test
         run: |
           go vet ./...
@@ -60,10 +66,18 @@ jobs:
           (cd dist && sha256sum * > checksums.txt)
           ls -l dist
 
-      - name: Create GitHub release with binaries
+      - name: Publish GitHub release with binaries
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "$GITHUB_REF_NAME" dist/*
-          --title "$GITHUB_REF_NAME"
-          --notes-from-tag
+        run: |
+          set -euo pipefail
+          notes="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # Release already exists (e.g. a retry): refresh assets and
+            # notes instead of failing.
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+            gh release edit "$GITHUB_REF_NAME" --notes "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --title "$GITHUB_REF_NAME" --notes "$notes"
+          fi
