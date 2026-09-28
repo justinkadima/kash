@@ -33,6 +33,18 @@ Download a prebuilt binary from the
 (linux / macOS / Windows, amd64 + arm64, with checksums): unpack the
 archive for your platform and put `kash` somewhere on your `PATH`.
 
+**macOS:** binaries are unsigned, so Gatekeeper blocks the first run
+("Apple could not verify…"). Unblock it once — remove the quarantine
+flag:
+
+```sh
+xattr -d com.apple.quarantine kash
+```
+
+— or use System Settings → Privacy & Security → **Allow Anyway**.
+Extracting the archive with `tar` from a shell instead of Finder's
+Archive Utility also avoids the flag entirely.
+
 Or install from Go:
 
 ```sh
