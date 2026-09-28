@@ -100,6 +100,24 @@ terminals with proper meta support.
 
 Chip buttons are clickable too: **run · edit · dismiss**.
 
+## @references
+
+Type `@` in the chat input to reference content in that message:
+
+- `@selection` — the current terminal selection (what you dragged)
+- `@path/to/file` — file content (capped at 8 KB / 400 lines)
+- `@dir/` — a directory listing
+
+A popup lists candidates as you type: `↑↓` navigate · `tab` completes ·
+`esc` closes. Relative paths resolve against the shell's cwd when the
+shell reports it (OSC 7), else con's cwd. References are inserted beneath
+your message for that turn only (visible to the model as `--- @… ---`
+blocks), so they don't bloat later turns. Emails (`foo@bar.com`) are
+ignored; a token must stand alone after whitespace.
+
+The right-click / `alt+a` attach-selection flow still works too — it pins
+the selection to your next message without typing anything.
+
 ### macOS: if Alt keys do nothing
 
 Terminal.app and iTerm2 compose special characters with Option by

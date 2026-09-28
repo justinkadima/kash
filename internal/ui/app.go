@@ -81,6 +81,12 @@ type App struct {
 	spin    int
 	quit    bool
 
+	comp struct {
+		items   []compItem
+		sel     int
+		visible bool
+	}
+
 	hits []hit
 
 	// layout rects
@@ -273,6 +279,7 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 	// Chat focus. Ctrl bindings below are safe because this input is ours:
 	// they are raw control codes and never reach the shell.
 	if k.Mod&uv.ModCtrl != 0 {
+		a.comp.visible = false
 		switch k.Code {
 		case 'c':
 			if a.streaming {
@@ -304,8 +311,32 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		}
 		return
 	}
+
+	// @-reference popup: while visible it owns the navigation keys.
+	if a.comp.visible {
+		switch k.Code {
+		case uv.KeyUp:
+			if a.comp.sel > 0 {
+				a.comp.sel--
+			}
+			return
+		case uv.KeyDown:
+			if a.comp.sel < len(a.comp.items)-1 {
+				a.comp.sel++
+			}
+			return
+		case uv.KeyTab:
+			a.applyCompletion()
+			return
+		case uv.KeyEscape:
+			a.comp.visible = false
+			return
+		}
+	}
+
 	switch k.Code {
 	case uv.KeyEscape:
+		a.comp.visible = false
 		if a.streaming {
 			a.cancelStream()
 			return
@@ -317,6 +348,7 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		}
 		return
 	case uv.KeyEnter:
+		a.comp.visible = false
 		if a.mode == modeChat {
 			a.sendChat()
 		} else {
@@ -326,6 +358,7 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 	case uv.KeyTab:
 		if a.mode == modeChat {
 			a.input.Insert("    ")
+			a.updateCompletions()
 		}
 		return
 	case uv.KeyPgUp:
@@ -336,6 +369,7 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		return
 	}
 	a.activeInput().HandleKey(k)
+	a.updateCompletions()
 }
 
 func (a *App) activeInput() *InputBar {
@@ -394,6 +428,11 @@ func (a *App) onClick(e uv.MouseClickEvent) {
 				a.dismissChip(h.chip)
 			case hitSettings:
 				a.modal = newSettingsModal(a.cfg)
+			case hitComplete:
+				if a.comp.visible {
+					a.comp.sel = h.idx
+					a.applyCompletion()
+				}
 			}
 			return
 		}
@@ -580,10 +619,23 @@ func (a *App) sendChat() {
 	}
 	a.input.PushHistory(text)
 	a.input.Clear()
+	a.comp.visible = false
+	mentions := a.resolveMentions(text)
+	for _, note := range failedMentionNotes(mentions) {
+		a.chat.AddNote(note)
+	}
 	sel := a.selCtx
 	a.selCtx = ""
+	// If the message references @selection and it matches the context
+	// attached via right-click, avoid sending it twice.
+	for _, m := range mentions {
+		if m.Err == "" && m.Kind == "selection" && m.Text == sel {
+			sel = ""
+		}
+	}
+	refs := formatRefBlock(mentions)
 	a.chat.AddUser(text)
-	msgs := a.buildMessages(sel)
+	msgs := a.buildMessages(sel, refs)
 	a.streaming = true
 	a.canceled = false
 	ctx, cancel := context.WithCancel(context.Background())
@@ -687,7 +739,7 @@ func (a *App) cancelStream() {
 	a.status = ""
 }
 
-func (a *App) buildMessages(sel string) []ai.Message {
+func (a *App) buildMessages(sel, refs string) []ai.Message {
 	var b strings.Builder
 	b.WriteString("You are the AI assistant embedded in \"con\", a terminal emulator with a chat side panel.\n")
 	b.WriteString("The user runs a real shell in the terminal pane; the recent terminal output is included below.\n\n")
@@ -699,6 +751,7 @@ func (a *App) buildMessages(sel string) []ai.Message {
 	b.WriteString("- The user reviews every proposed command before running it; they may edit or reject it.\n")
 	b.WriteString("- If several commands are needed, propose them in order as separate blocks.\n")
 	b.WriteString("- Use the terminal output below as context; don't ask the user to re-paste it.\n")
+	b.WriteString("- The user can reference content with @tokens: @selection injects the current terminal selection, @path injects a file or directory listing. Referenced content appears in blocks marked '--- @... ---' appended beneath their message, included for that message only.\n")
 
 	shellName := strings.TrimSpace(a.shellPath)
 	if i := strings.LastIndex(shellName, "/"); i >= 0 {
@@ -732,6 +785,16 @@ func (a *App) buildMessages(sel string) []ai.Message {
 
 	msgs := []ai.Message{{Role: "system", Content: b.String()}}
 	msgs = append(msgs, a.chat.History(24)...)
+	// Attach @reference content to the message that asked for it (this
+	// turn only — history keeps the text as typed).
+	if refs != "" {
+		for i := len(msgs) - 1; i >= 0; i-- {
+			if msgs[i].Role == "user" {
+				msgs[i].Content += "\n\n" + refs
+				break
+			}
+		}
+	}
 	return msgs
 }
 
@@ -816,6 +879,10 @@ func (a *App) Draw(scr uv.Screen, area uv.Rectangle) {
 		prefix, pst = "term ❯", stGreen
 	}
 	inputCursor := a.activeInput().Draw(scr, a.rectChatInput, prefix, pst, a.focus == focusChat)
+
+	if a.comp.visible {
+		a.drawCompletions(scr, &a.hits)
+	}
 
 	a.drawStatus(scr, a.rectStatus)
 

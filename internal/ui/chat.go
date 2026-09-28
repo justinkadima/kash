@@ -39,8 +39,9 @@ type ChatMsg struct {
 // hit is a clickable region recorded during drawing.
 type hit struct {
 	rect uv.Rectangle
-	kind int // hitRun, hitEdit, hitDismiss
+	kind int // hitRun, hitEdit, hitDismiss, hitSettings, hitComplete
 	chip *Chip
+	idx  int // popup row (hitComplete)
 }
 
 const (
@@ -48,6 +49,7 @@ const (
 	hitEdit
 	hitDismiss
 	hitSettings
+	hitComplete
 )
 
 // Chat holds the visible conversation.

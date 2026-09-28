@@ -62,7 +62,7 @@ func (v *termView) done() { v.sh.Unlock() }
 
 // selectionText extracts the selected text under the emulator lock.
 func (a *App) selectionText() string {
-	if !a.sel.have {
+	if a.shell == nil || !a.sel.have {
 		return ""
 	}
 	v := a.termSnapshot()

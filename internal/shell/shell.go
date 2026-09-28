@@ -174,7 +174,22 @@ func (s *Shell) waitExit() {
 // ---- input ----
 
 // SendKey forwards a key event to the child (encoded per its current modes).
-func (s *Shell) SendKey(k uv.KeyEvent) { s.vt.SendKey(k) }
+//
+// vt.SendKey only implements legacy key encodings. Hosts using the kitty
+// keyboard protocol report 'A' as {Code:'a', Mod:Shift, Text:"A"}, which vt
+// drops (its default case refuses any event with modifiers set). Normalize
+// printable events to raw text — exactly what a terminal delivers for
+// printable input — and pass everything else through untouched.
+func (s *Shell) SendKey(k uv.KeyEvent) {
+	if kp, ok := k.(uv.KeyPressEvent); ok {
+		key := kp.Key()
+		if key.Text != "" && key.Mod&^uv.ModShift == 0 {
+			s.vt.SendText(key.Text)
+			return
+		}
+	}
+	s.vt.SendKey(k)
+}
 
 // SendMouse forwards a mouse event, translated to child-relative coordinates
 // by the caller; vt drops it unless the child enabled mouse reporting.
