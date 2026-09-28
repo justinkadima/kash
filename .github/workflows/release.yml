@@ -74,9 +74,10 @@ jobs:
           notes="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             # Release already exists (e.g. a retry): refresh assets and
-            # notes instead of failing.
+            # notes instead of failing. Deleting a tag on GitHub turns its
+            # release into a draft, so re-publish explicitly.
             gh release upload "$GITHUB_REF_NAME" dist/* --clobber
-            gh release edit "$GITHUB_REF_NAME" --notes "$notes"
+            gh release edit "$GITHUB_REF_NAME" --notes "$notes" --draft=false
           else
             gh release create "$GITHUB_REF_NAME" dist/* \
               --title "$GITHUB_REF_NAME" --notes "$notes"
