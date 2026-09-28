@@ -76,9 +76,10 @@ type App struct {
 	sel        selState
 	termScroll int
 
-	status string
-	spin   int
-	quit   bool
+	status  string
+	lastKey string
+	spin    int
+	quit    bool
 
 	hits []hit
 
@@ -193,12 +194,19 @@ func (a *App) probeModels() {
 
 func (a *App) onKey(e uv.KeyPressEvent) {
 	k := e.Key()
+	a.lastKey = e.Keystroke()
+
 	if a.modal != nil {
 		a.modalAction(a.modal.handleKey(k))
 		return
 	}
 	if a.help {
-		a.help = false
+		// Help doubles as a key tester: any key updates the diagnostic
+		// line at the bottom; only these close it.
+		if k.Code == uv.KeyEscape || k.Code == uv.KeyEnter ||
+			(k.Mod&uv.ModCtrl != 0 && k.Code == 'g') {
+			a.help = false
+		}
 		return
 	}
 	if k.Mod&uv.ModAlt != 0 {
@@ -227,25 +235,34 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		case 'r':
 			a.runNewestChip()
 			return
+		case 't':
+			a.toggleCommandMode()
+			return
 		case 'e':
 			a.editNewestChip()
 			return
-		case 't':
-			// toggle between chatting and typing shell commands
-			if a.mode == modeCommand {
-				a.mode = modeChat
-				a.status = ""
-			} else {
-				a.mode = modeCommand
-				a.focus = focusChat
-				a.status = "term mode — enter runs the line in the shell, esc back"
-			}
+		case 'd':
+			a.dismissNewestChip()
 			return
 		case 'a':
 			a.attachSelection()
 			return
 		}
 	}
+
+	// Ctrl+G is the universal escape hatch: it arrives as a raw control
+	// code (BEL), so every terminal delivers it without any meta/option
+	// configuration. From the terminal pane it jumps to chat; from chat
+	// it opens help.
+	if k.Mod&uv.ModCtrl != 0 && k.Code == 'g' {
+		if a.focus == focusTerminal {
+			a.focus = focusChat
+		} else {
+			a.help = true
+		}
+		return
+	}
+
 	if a.focus == focusTerminal {
 		if a.shell != nil {
 			a.shell.SendKey(e)
@@ -253,12 +270,37 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		return
 	}
 
-	// Chat focus.
-	if k.Mod&uv.ModCtrl != 0 && k.Code == 'c' {
-		if a.streaming {
-			a.cancelStream()
-		} else {
-			a.activeInput().Clear()
+	// Chat focus. Ctrl bindings below are safe because this input is ours:
+	// they are raw control codes and never reach the shell.
+	if k.Mod&uv.ModCtrl != 0 {
+		switch k.Code {
+		case 'c':
+			if a.streaming {
+				a.cancelStream()
+			} else {
+				a.activeInput().Clear()
+			}
+			return
+		case 's':
+			a.modal = newSettingsModal(a.cfg)
+			return
+		case 't':
+			a.toggleCommandMode()
+			return
+		case 'r':
+			a.runNewestChip()
+			return
+		case 'd':
+			a.dismissNewestChip()
+			return
+		case 'l':
+			a.chat.Clear()
+			a.selCtx = ""
+			a.status = "conversation cleared"
+			return
+		case 'q':
+			a.quit = true
+			return
 		}
 		return
 	}
@@ -303,6 +345,29 @@ func (a *App) activeInput() *InputBar {
 	return &a.input
 }
 
+// toggleCommandMode switches the chat input between chatting (text goes to
+// the AI) and term mode (enter runs the line in the shell).
+func (a *App) toggleCommandMode() {
+	if a.mode == modeCommand {
+		a.mode = modeChat
+		a.status = ""
+	} else {
+		a.mode = modeCommand
+		a.focus = focusChat
+		a.status = "term mode — enter runs the line in the shell, esc back"
+	}
+}
+
+func (a *App) dismissNewestChip() {
+	_, _, c, ok := a.chat.NewestPending()
+	if !ok {
+		a.status = "no proposed command"
+		return
+	}
+	c.State = ChipDismissed
+	a.status = "dismissed proposed command"
+}
+
 // ---- mouse routing ----
 
 func (a *App) onClick(e uv.MouseClickEvent) {
@@ -326,7 +391,9 @@ func (a *App) onClick(e uv.MouseClickEvent) {
 			case hitEdit:
 				a.editChip(h.chip)
 			case hitDismiss:
-				h.chip.State = ChipDismissed
+				a.dismissChip(h.chip)
+			case hitSettings:
+				a.modal = newSettingsModal(a.cfg)
 			}
 			return
 		}
@@ -741,7 +808,7 @@ func (a *App) Draw(scr uv.Screen, area uv.Rectangle) {
 		border = stAccent
 	}
 	chatInner := drawBox(scr, a.rectChat, border, "chat")
-	a.drawChatHeader(scr, chatInner)
+	a.drawChatHeader(scr, chatInner, &a.hits)
 	a.chat.DrawBody(scr, a.rectChatBody, &a.hits)
 
 	prefix, pst := "chat ❯", stPurple
@@ -793,17 +860,24 @@ func (a *App) layout(area uv.Rectangle) {
 	a.rectChatInput = uv.Rect(inner.Min.X, inner.Max.Y-3, inner.Dx(), 3)
 }
 
-func (a *App) drawChatHeader(scr uv.Screen, inner uv.Rectangle) {
+func (a *App) drawChatHeader(scr uv.Screen, inner uv.Rectangle, hits *[]hit) {
 	if inner.Dy() < 1 {
 		return
 	}
 	model := a.cfg.Model
 	st := stGreen
 	if model == "" {
-		model = "no model — alt+s"
+		model = "no model — click or ctrl+s"
 		st = stRed
 	}
 	x := putStr(scr, inner, 1, 0, "◍ "+model, st)
+	// The model name is a clickable shortcut to settings.
+	if w := scrWidth(scr, "◍ "+model); w > 0 {
+		*hits = append(*hits, hit{
+			rect: uv.Rect(inner.Min.X+1, inner.Min.Y, min(w, inner.Dx()-1), 1),
+			kind: hitSettings,
+		})
+	}
 	if a.streaming {
 		frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 		putStr(scr, inner, x+2, 0, frames[a.spin%len(frames)]+" streaming", stYellow)
@@ -847,8 +921,10 @@ func (a *App) drawStatus(scr uv.Screen, rect uv.Rectangle) {
 		right = a.status
 	case a.streaming:
 		right = "streaming…"
+	case a.focus == focusTerminal:
+		right = "ctrl+g → chat · alt+h help"
 	default:
-		right = "alt+h help"
+		right = "ctrl+s settings · ctrl+t term · ctrl+g help"
 	}
 	putStr(scr, rect, max(1, rect.Dx()-2-scrWidth(scr, right)), 0, right, uv.Style{Attrs: uv.AttrReverse | uv.AttrBold})
 }

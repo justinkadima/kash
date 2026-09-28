@@ -47,6 +47,7 @@ const (
 	hitRun = iota
 	hitEdit
 	hitDismiss
+	hitSettings
 )
 
 // Chat holds the visible conversation.

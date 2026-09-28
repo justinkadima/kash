@@ -77,23 +77,41 @@ CON_CONFIG=./config.json ./con
 
 ## Keys
 
-| key | action |
+Every action has a **Ctrl binding** — raw control codes that every
+terminal delivers, no configuration needed — plus an Alt binding for
+terminals with proper meta support.
+
+| key (ctrl / alt) | action |
 |---|---|
-| `alt+space` / click pane | switch focus: terminal ⇄ chat |
-| `alt+t` | toggle chat ⇄ **term input** (type a command, enter runs it) |
+| `ctrl+g` / `alt+space`·click | focus: terminal → chat · chat → help |
+| `ctrl+t` / `alt+t` | toggle chat ⇄ **term input** (type a command, enter runs it) |
 | `enter` | chat: send message · term input: run line |
-| `alt+r` | run the newest proposed command chip |
+| `ctrl+s` / `alt+s` | settings (also: click the model name) |
+| `ctrl+r` / `alt+r` | run the newest proposed command chip |
 | `alt+e` | edit the newest chip (loads it into term input) |
+| `ctrl+d` / `alt+d` | dismiss the newest chip |
+| `ctrl+l` / `alt+c` | clear conversation |
+| `ctrl+q` / `alt+q` | quit (from chat input) |
 | drag / right-click | select terminal text / attach selection as context |
 | `alt+a` | attach selection as context |
-| `alt+s` | settings |
-| `alt+c` | clear conversation |
 | `ctrl+c` | chat: cancel stream · terminal: SIGINT to shell |
 | `esc` | cancel stream · leave term input |
 | wheel / `pgup`/`pgdn` | scroll terminal / chat |
-| `alt+h` | help · `alt+q` quit |
 
 Chip buttons are clickable too: **run · edit · dismiss**.
+
+### macOS: if Alt keys do nothing
+
+Terminal.app and iTerm2 compose special characters with Option by
+default (Option+R → `®`), so the app never receives them. Either use the
+Ctrl bindings above, or enable meta mode for the terminal profile:
+
+- **Terminal.app:** Settings → Profiles → Keyboard → *Use Option as Meta key*
+- **iTerm2:** Settings → Profiles → Keys → *Option key sends: Esc+*
+- Ghostty, kitty, WezTerm, tmux send Alt natively
+
+Open help (`ctrl+g` from chat) — it shows the **last key your terminal
+delivered**, which tells you immediately what is reaching the app.
 
 ## How it works
 
