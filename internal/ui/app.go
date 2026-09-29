@@ -264,9 +264,6 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		case 'a':
 			a.attachSelection()
 			return
-		case 'b':
-			a.toggleChat()
-			return
 		}
 	}
 
@@ -280,6 +277,13 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		} else {
 			a.help = true
 		}
+		return
+	}
+
+	// Ctrl+B toggles the chat pane from either focus, like F2. This
+	// shadows readline's backward-char in the shell — use ← instead.
+	if k.Mod&uv.ModCtrl != 0 && k.Mod&uv.ModAlt == 0 && k.Code == 'b' {
+		a.toggleChat()
 		return
 	}
 
@@ -329,9 +333,6 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 			return
 		case 'q':
 			a.quit = true
-			return
-		case 'b':
-			a.toggleChat()
 			return
 		}
 		return
@@ -1060,11 +1061,11 @@ func (a *App) drawStatus(scr uv.Screen, rect uv.Rectangle) {
 	case a.status != "":
 		right = a.status
 	case a.chatHidden:
-		right = "F2 chat · alt+h help"
+		right = "F2 / ctrl+b chat · alt+h help"
 	case a.streaming:
 		right = "streaming…"
 	case a.focus == focusTerminal:
-		right = "ctrl+g → chat · F2 chat · alt+h help"
+		right = "ctrl+g → chat · F2 / ctrl+b chat · alt+h help"
 	default:
 		right = "ctrl+s settings · ctrl+t term · ctrl+b hide · ctrl+g help"
 	}

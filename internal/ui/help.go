@@ -15,6 +15,7 @@ var helpLines = []struct {
 	{"alt+space / click", "switch focus: terminal ⇄ chat"},
 	{"ctrl+t / alt+t", "toggle chat ⇄ term input mode"},
 	{"F2 / ctrl+b", "hide the chat pane · again to restore"},
+	{"", "(works in both panes; shells no longer see ctrl+b — use ←)"},
 	{"enter", "chat: send message · term input: run line"},
 	{"ctrl+s / alt+s", "settings (Ollama URL, model, …)"},
 	{"ctrl+r / alt+r", "run the newest proposed command"},
