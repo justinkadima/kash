@@ -123,6 +123,7 @@ terminals with proper meta support.
 |---|---|
 | `ctrl+g` / `alt+space`·click | focus: terminal → chat · chat → help |
 | `ctrl+t` / `alt+t` | toggle chat ⇄ **term input** (type a command, enter runs it) |
+| `F2` / `ctrl+b`·`alt+b` | hide the chat pane (terminal takes the full width) · again to restore |
 | `enter` | chat: send message · term input: run line |
 | `ctrl+s` / `alt+s` | settings (also: click the model name) |
 | `ctrl+r` / `alt+r` | run the newest proposed command chip |

@@ -36,6 +36,31 @@ func containsLine(lines []string, sub string) bool {
 	return false
 }
 
+func TestLayoutChatHidden(t *testing.T) {
+	a := &App{cfg: config.Default()}
+
+	a.layout(uv.Rect(0, 0, 100, 30))
+	if got := a.rectTerm.Dx(); got != 100-38 {
+		t.Errorf("visible: terminal width = %d, want %d", got, 100-38)
+	}
+	if got := a.rectChat.Dx(); got != 38 {
+		t.Errorf("visible: chat width = %d, want 38", got)
+	}
+
+	a.chatHidden = true
+	a.layout(uv.Rect(0, 0, 100, 30))
+	if got := a.rectTerm.Dx(); got != 100 {
+		t.Errorf("hidden: terminal width = %d, want 100", got)
+	}
+	if got := a.rectChat.Dx(); got != 0 {
+		t.Errorf("hidden: chat width = %d, want 0", got)
+	}
+	// Zero-width rects must not intersect a click at the right edge.
+	if inRect(a.rectChat, 99, 15) {
+		t.Error("hidden: chat rect claims hits")
+	}
+}
+
 func TestChatRenderWithChip(t *testing.T) {
 	var c Chat
 	c.AddUser("list files")

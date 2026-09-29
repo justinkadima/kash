@@ -61,6 +61,8 @@ type App struct {
 	focus focusT
 	mode  inputModeT
 
+	chatHidden bool // F2: give the terminal the full window width
+
 	input    InputBar // chat input
 	cmdInput InputBar // term-mode input (edit/run commands)
 
@@ -253,6 +255,9 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		case 'a':
 			a.attachSelection()
 			return
+		case 'b':
+			a.toggleChat()
+			return
 		}
 	}
 
@@ -266,6 +271,14 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		} else {
 			a.help = true
 		}
+		return
+	}
+
+	// F2 toggles the chat pane from either focus. Unlike ctrl+b it is not
+	// bound by readline, so it can also be intercepted while the terminal
+	// pane is focused.
+	if k.Code == uv.KeyF2 && k.Mod == 0 {
+		a.toggleChat()
 		return
 	}
 
@@ -307,6 +320,9 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 			return
 		case 'q':
 			a.quit = true
+			return
+		case 'b':
+			a.toggleChat()
 			return
 		}
 		return
@@ -390,6 +406,22 @@ func (a *App) toggleCommandMode() {
 		a.focus = focusChat
 		a.status = "term mode — enter runs the line in the shell, esc back"
 	}
+}
+
+// toggleChat hides or restores the chat pane, giving the terminal the
+// full window width while hidden.
+func (a *App) toggleChat() {
+	a.chatHidden = !a.chatHidden
+	if a.chatHidden {
+		// The chat input is invisible; make sure keys keep going to the
+		// shell instead of an editor nobody can see.
+		a.focus = focusTerminal
+		a.comp.visible = false
+	}
+	// Re-running resize relayouts both panes and resizes the pty to the
+	// new terminal width.
+	b := a.scr.Bounds()
+	a.resize(b.Dx(), b.Dy())
 }
 
 func (a *App) dismissNewestChip() {
@@ -878,22 +910,25 @@ func (a *App) Draw(scr uv.Screen, area uv.Rectangle) {
 	cursor, showCursor := a.drawTerminal(scr, a.rectTerm)
 
 	// Chat pane.
-	border := stBorder
-	if a.focus == focusChat {
-		border = stAccent
-	}
-	chatInner := drawBox(scr, a.rectChat, border, "chat")
-	a.drawChatHeader(scr, chatInner, &a.hits)
-	a.chat.DrawBody(scr, a.rectChatBody, &a.hits)
+	var inputCursor uv.Position
+	if !a.chatHidden {
+		border := stBorder
+		if a.focus == focusChat {
+			border = stAccent
+		}
+		chatInner := drawBox(scr, a.rectChat, border, "chat")
+		a.drawChatHeader(scr, chatInner, &a.hits)
+		a.chat.DrawBody(scr, a.rectChatBody, &a.hits)
 
-	prefix, pst := "chat ❯", stPurple
-	if a.mode == modeCommand {
-		prefix, pst = "term ❯", stGreen
-	}
-	inputCursor := a.activeInput().Draw(scr, a.rectChatInput, prefix, pst, a.focus == focusChat)
+		prefix, pst := "chat ❯", stPurple
+		if a.mode == modeCommand {
+			prefix, pst = "term ❯", stGreen
+		}
+		inputCursor = a.activeInput().Draw(scr, a.rectChatInput, prefix, pst, a.focus == focusChat)
 
-	if a.comp.visible {
-		a.drawCompletions(scr, &a.hits)
+		if a.comp.visible {
+			a.drawCompletions(scr, &a.hits)
+		}
 	}
 
 	a.drawStatus(scr, a.rectStatus)
@@ -909,7 +944,7 @@ func (a *App) Draw(scr uv.Screen, area uv.Rectangle) {
 	switch {
 	case a.modal != nil || a.help:
 		a.scr.HideCursor()
-	case a.focus == focusChat:
+	case a.focus == focusChat && !a.chatHidden:
 		a.scr.SetCursorPosition(inputCursor.X, inputCursor.Y)
 		a.scr.ShowCursor()
 	case showCursor:
@@ -924,6 +959,15 @@ func (a *App) layout(area uv.Rectangle) {
 	w, h := area.Dx(), area.Dy()
 	a.rectStatus = uv.Rect(0, h-1, w, 1)
 	main := uv.Rect(0, 0, w, h-1)
+
+	if a.chatHidden {
+		// Full-width terminal; chat pane gone entirely.
+		a.rectChat = uv.Rect(w, main.Min.Y, 0, main.Dy())
+		a.rectTerm = main
+		a.rectChatBody = uv.Rectangle{}
+		a.rectChatInput = uv.Rectangle{}
+		return
+	}
 
 	chatW := int(float64(w)*a.cfg.ChatRatio + 0.5)
 	chatW = clamp(chatW, 24, max(24, w-16))
@@ -998,12 +1042,14 @@ func (a *App) drawStatus(scr uv.Screen, rect uv.Rectangle) {
 	switch {
 	case a.status != "":
 		right = a.status
+	case a.chatHidden:
+		right = "F2 chat · alt+h help"
 	case a.streaming:
 		right = "streaming…"
 	case a.focus == focusTerminal:
-		right = "ctrl+g → chat · alt+h help"
+		right = "ctrl+g → chat · F2 chat · alt+h help"
 	default:
-		right = "ctrl+s settings · ctrl+t term · ctrl+g help"
+		right = "ctrl+s settings · ctrl+t term · ctrl+b hide · ctrl+g help"
 	}
 	putStr(scr, rect, max(1, rect.Dx()-2-scrWidth(scr, right)), 0, right, uv.Style{Attrs: uv.AttrReverse | uv.AttrBold})
 }
