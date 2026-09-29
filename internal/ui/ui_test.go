@@ -36,6 +36,18 @@ func containsLine(lines []string, sub string) bool {
 	return false
 }
 
+func TestWelcomeOverlay(t *testing.T) {
+	a := &App{cfg: config.Default()}
+	scr := uv.NewScreenBuffer(100, 44)
+	a.drawWelcome(scr, scr.Bounds())
+	lines := dump(scr)
+	for _, want := range []string{"welcome", "✕", "got it", "ctrl+g", "F2 / ctrl+b", "@selection"} {
+		if !containsLine(lines, want) {
+			t.Errorf("welcome panel missing %q; got %q", want, lines)
+		}
+	}
+}
+
 func TestLayoutChatHidden(t *testing.T) {
 	a := &App{cfg: config.Default()}
 

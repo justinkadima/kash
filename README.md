@@ -75,6 +75,10 @@ should work via ConPTY but is untested.
 ./kash
 ```
 
+A welcome panel listing the shortcuts opens with the app; press any
+key, or click anywhere (the **got it** button included), to dismiss it.
+`ctrl+g` from chat re-opens the key reference any time.
+
 Ollama at `http://127.0.0.1:11434` is picked up automatically (first model
 in `/v1/models`). Point it elsewhere with `alt+s` → settings, or the config
 file.

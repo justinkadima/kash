@@ -69,3 +69,36 @@ func (a *App) drawHelp(scr uv.Screen, area uv.Rectangle) {
 	putStr(scr, inner, 1, inner.Dy()-2, "last key: "+last, stDim)
 	putStr(scr, inner, 1, inner.Dy()-1, "esc / ctrl+g to close", stDim)
 }
+
+// drawWelcome renders the splash panel shown at startup. It reuses the
+// help key table and adds a visible close button; any key press or click
+// anywhere also dismisses it.
+func (a *App) drawWelcome(scr uv.Screen, area uv.Rectangle) {
+	w := min(64, area.Dx()-2)
+	need := len(helpLines) + 8 // intro(2) + blank + table + footer(3)
+	h := min(need, area.Dy()-2)
+	x0 := area.Min.X + (area.Dx()-w)/2
+	y0 := area.Min.Y + (area.Dy()-h)/2
+	rect := uv.Rect(x0, y0, w, h)
+
+	fillRect(scr, rect, uv.Style{})
+	inner := drawBox(scr, rect, stAccent, "welcome")
+	// Close icon on the top-right border corner.
+	putStr(scr, rect, rect.Dx()-3, 0, "✕", stYellow)
+
+	putStr(scr, inner, 1, 0, "kash — your terminal with an AI side panel", stPurple)
+	putStr(scr, inner, 1, 1, "chat sees your terminal; @files and @selection add context", stDim)
+
+	lastRow := inner.Dy() - 2 // first row reserved for the footer
+	for i, l := range helpLines {
+		if i >= lastRow-3 {
+			break
+		}
+		putStr(scr, inner, 1, 3+i, l.keys, stYellow)
+		putStr(scr, inner, 21, 3+i, truncate(scr, l.desc, inner.Dx()-22), uv.Style{})
+	}
+	putStr(scr, inner, 1, inner.Dy()-1, "any key or click closes", stDim)
+	btn := " [ got it ] "
+	putStr(scr, inner, max(1, inner.Dx()-len(btn)), inner.Dy()-1, btn,
+		uv.Style{Attrs: uv.AttrReverse | uv.AttrBold})
+}

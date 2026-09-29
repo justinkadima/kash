@@ -70,6 +70,8 @@ type App struct {
 	modal *SettingsModal
 	help  bool
 
+	welcome bool // splash panel with shortcuts, shown at startup
+
 	streaming bool
 	canceled  bool
 	cancel    context.CancelFunc
@@ -109,6 +111,7 @@ func Run(cfg *config.Config, cfgPath, shellPath string) error {
 		client:    ai.New(cfg.BaseURL, cfg.APIKey),
 		term:      term,
 		focus:     focusTerminal,
+		welcome:   true,
 	}
 	if err := term.Start(); err != nil {
 		return err
@@ -206,6 +209,12 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 
 	if a.modal != nil {
 		a.modalAction(a.modal.handleKey(k))
+		return
+	}
+	if a.welcome {
+		// The splash panel dismisses on any key press; the key itself is
+		// swallowed so nothing happens behind the user's back.
+		a.welcome = false
 		return
 	}
 	if a.help {
@@ -442,6 +451,11 @@ func (a *App) onClick(e uv.MouseClickEvent) {
 		a.modalAction(a.modal.click(m.X, m.Y))
 		return
 	}
+	if a.welcome {
+		// Any click dismisses the splash panel, close button included.
+		a.welcome = false
+		return
+	}
 	if a.help {
 		a.help = false
 		return
@@ -501,7 +515,7 @@ func (a *App) onClick(e uv.MouseClickEvent) {
 }
 
 func (a *App) onMotion(e uv.MouseMotionEvent) {
-	if a.modal != nil || a.help || a.shell == nil {
+	if a.modal != nil || a.welcome || a.help || a.shell == nil {
 		return
 	}
 	m := e.Mouse()
@@ -540,7 +554,7 @@ func (a *App) onRelease(e uv.MouseReleaseEvent) {
 }
 
 func (a *App) onWheel(e uv.MouseWheelEvent) {
-	if a.modal != nil || a.help || a.shell == nil {
+	if a.modal != nil || a.welcome || a.help || a.shell == nil {
 		return
 	}
 	m := e.Mouse()
@@ -589,7 +603,7 @@ func (a *App) forwardMouse(ev uv.MouseEvent, rect uv.Rectangle) {
 }
 
 func (a *App) onPaste(e uv.PasteEvent) {
-	if a.modal != nil || a.help || a.shell == nil {
+	if a.modal != nil || a.welcome || a.help || a.shell == nil {
 		return
 	}
 	if a.focus == focusTerminal {
@@ -939,10 +953,13 @@ func (a *App) Draw(scr uv.Screen, area uv.Rectangle) {
 	if a.help {
 		a.drawHelp(scr, area)
 	}
+	if a.welcome {
+		a.drawWelcome(scr, area)
+	}
 
 	// Host cursor.
 	switch {
-	case a.modal != nil || a.help:
+	case a.modal != nil || a.help || a.welcome:
 		a.scr.HideCursor()
 	case a.focus == focusChat && !a.chatHidden:
 		a.scr.SetCursorPosition(inputCursor.X, inputCursor.Y)
