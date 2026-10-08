@@ -211,7 +211,7 @@ func (c *Chat) buildAssistant(scr uv.Screen, m *ChatMsg, mi, width int) []chatEl
 	var elems []chatElem
 	elems = append(elems, chatElem{line: "◍ assistant", style: stPurple})
 	last := 0
-	chipN := 0
+	chipIdx := 0
 	prose := func(text string) {
 		text = trimBlank(text)
 		if text == "" {
@@ -221,12 +221,25 @@ func (c *Chat) buildAssistant(scr uv.Screen, m *ChatMsg, mi, width int) []chatEl
 			elems = append(elems, chatElem{line: ln})
 		}
 	}
+	// Reference code (python, go, json, …) is shown as text; only the
+	// command fences below become chips.
+	code := func(text string) {
+		for _, ln := range wrapText(scr, strings.Trim(text, "\n"), width-4) {
+			elems = append(elems, chatElem{line: "  " + ln, style: stDim})
+		}
+	}
 	for _, mm := range chatFence.FindAllStringSubmatchIndex(m.Text, -1) {
 		prose(m.Text[last:mm[0]])
-		if chipN < len(m.Chips) {
-			elems = append(elems, c.newChipView(scr, m.Chips[chipN], mi, width))
+		lang := m.Text[mm[2]:mm[3]]
+		if ai.IsCommandLang(lang) && chipIdx < len(m.Chips) {
+			elems = append(elems, c.newChipView(scr, m.Chips[chipIdx], mi, width))
+			chipIdx++
+		} else {
+			// Non-command fence, or a command fence that produced no chip
+			// (e.g. an empty block): render the code itself so nothing the
+			// model said silently disappears.
+			code(m.Text[mm[4]:mm[5]])
 		}
-		chipN++
 		last = mm[1]
 	}
 	prose(m.Text[last:])

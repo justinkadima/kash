@@ -58,3 +58,16 @@ func TestExtractCommands(t *testing.T) {
 		})
 	}
 }
+
+func TestIsCommandLang(t *testing.T) {
+	for _, lang := range []string{"", "bash", "sh", "zsh", "shell", "console", "SH", " Shell "} {
+		if !IsCommandLang(lang) {
+			t.Errorf("IsCommandLang(%q) = false, want true", lang)
+		}
+	}
+	for _, lang := range []string{"python", "go", "json", "bashscript"} {
+		if IsCommandLang(lang) {
+			t.Errorf("IsCommandLang(%q) = true, want false", lang)
+		}
+	}
+}

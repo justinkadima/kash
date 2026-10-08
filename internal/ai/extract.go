@@ -47,6 +47,12 @@ func ExtractCommands(text string) []Command {
 	return cmds
 }
 
+// IsCommandLang reports whether a fenced block's language tag marks a
+// shell command (the fences chips are proposed from).
+func IsCommandLang(lang string) bool {
+	return commandLangs[strings.ToLower(strings.TrimSpace(lang))]
+}
+
 // StripCommands removes fenced command blocks from an assistant message,
 // leaving only the prose (used for display in the chat pane).
 func StripCommands(text string) string {

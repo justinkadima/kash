@@ -126,6 +126,46 @@ func TestChatRenderWithChip(t *testing.T) {
 	}
 }
 
+func lineIndex(lines []string, sub string) int {
+	for i, l := range lines {
+		if strings.Contains(l, sub) {
+			return i
+		}
+	}
+	return -1
+}
+
+// Non-command code blocks (python, go, …) must render as text in the
+// chat, not be swallowed by the chip path; chips must appear at their
+// own fence's position, not shifted by preceding reference blocks.
+func TestChatRenderNonCommandCode(t *testing.T) {
+	var c Chat
+	c.AddAssistant()
+	c.AppendStream("Use this:\n\n```python\nprint('hi')\n```\n\nThen run it:\n\n```bash\npython3 t.py\n```\n\nDone.")
+	c.FinishStream()
+	c.SyncChips()
+	if len(c.msgs[0].Chips) != 1 {
+		t.Fatalf("expected exactly 1 chip, got %d", len(c.msgs[0].Chips))
+	}
+
+	scr := uv.NewScreenBuffer(44, 24)
+	var hits []hit
+	c.DrawBody(scr, scr.Bounds(), &hits)
+	lines := dump(scr)
+	for _, want := range []string{"Use this:", "print('hi')", "Then run it:", "python3 t.py", "Done."} {
+		if !containsLine(lines, want) {
+			t.Errorf("missing %q in render; got %q", want, lines)
+		}
+	}
+	// The python code must render before the chip box (the bash block),
+	// i.e. the chip must not be displaced onto the python block.
+	py := lineIndex(lines, "print('hi')")
+	chip := lineIndex(lines, "─ cmd")
+	if py < 0 || chip < 0 || py > chip {
+		t.Errorf("python line %d should precede chip %d; got %q", py, chip, lines)
+	}
+}
+
 func TestChatStreamingOpenFence(t *testing.T) {
 	var c Chat
 	c.AddAssistant()
