@@ -135,7 +135,8 @@ terminals with proper meta support.
 | `ctrl+d` / `alt+d` | dismiss the newest chip |
 | `ctrl+l` / `alt+c` | clear conversation |
 | `ctrl+q` / `alt+q` | quit (from chat input) |
-| drag / right-click | select terminal text / attach selection as context |
+| drag / right-click | select terminal text (**copied to clipboard**) / attach selection as context |
+| `cmd+c` / `ctrl+shift+c` | copy the selection explicitly (host-dependent) |
 | `alt+a` | attach selection as context |
 | `ctrl+c` | chat: cancel stream · terminal: SIGINT to shell |
 | `esc` | cancel stream · leave term input |

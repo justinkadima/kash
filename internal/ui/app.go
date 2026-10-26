@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/justinkadima/kash/internal/ai"
+	"github.com/justinkadima/kash/internal/clip"
 	"github.com/justinkadima/kash/internal/config"
 	"github.com/justinkadima/kash/internal/shell"
 
@@ -295,6 +296,17 @@ func (a *App) onKey(e uv.KeyPressEvent) {
 		return
 	}
 
+	// Explicit copy of the terminal selection, for terminals that deliver
+	// distinct modifiers: cmd+c (super flag, kitty/Ghostty/WezTerm) or
+	// ctrl+shift+c (kitty-protocol hosts). Legacy hosts cannot express
+	// these; copy-on-selection-release covers them.
+	if a.sel.have && (k.Code == 'c' || k.Code == 'C') &&
+		(k.Mod&uv.ModSuper != 0 ||
+			(k.Mod&uv.ModCtrl != 0 && k.Mod&uv.ModShift != 0 && k.Mod&uv.ModAlt == 0)) {
+		a.copySelection()
+		return
+	}
+
 	if a.focus == focusTerminal {
 		if a.shell != nil {
 			a.shell.SendKey(e)
@@ -540,17 +552,45 @@ func (a *App) onRelease(e uv.MouseReleaseEvent) {
 		return
 	}
 	m := e.Mouse()
-	if inRect(a.rectTerm, m.X, m.Y) {
-		if a.shell.Snapshot().ChildMouse {
-			a.forwardMouse(e, a.rectTerm)
-			return
-		}
+	if inRect(a.rectTerm, m.X, m.Y) && a.shell.Snapshot().ChildMouse {
+		a.forwardMouse(e, a.rectTerm)
+		return
+	}
+	// Finalize a drag wherever the button comes up, not only inside the
+	// terminal pane.
+	if a.sel.dragging {
 		a.sel.dragging = false
 		if a.sel.v0 == a.sel.v1 && a.sel.x0 == a.sel.x1 {
 			// Click without drag: clear the anchor instead of leaving a
 			// zero-width selection behind.
 			a.sel.have = false
+		} else if a.sel.have {
+			// Terminal-style copy-on-select: a finished drag lands in the
+			// clipboard immediately.
+			a.copySelection()
 		}
+	}
+}
+
+// copySelection writes the current terminal selection to the system
+// clipboard and reports the outcome in the status line.
+func (a *App) copySelection() {
+	if a.shell == nil || !a.sel.have {
+		return
+	}
+	txt := strings.TrimSpace(a.selectionText())
+	if txt == "" {
+		return
+	}
+	if err := clip.Copy(txt + "\n"); err != nil {
+		a.status = "clipboard unavailable"
+		return
+	}
+	n := strings.Count(txt, "\n") + 1
+	if n == 1 {
+		a.status = "copied 1 line"
+	} else {
+		a.status = fmt.Sprintf("copied %d lines", n)
 	}
 }
 
